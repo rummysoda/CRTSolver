@@ -5,12 +5,12 @@ import argparse
 import builtins
 from pathlib import Path
 from crtsolver.input_output import reader, writer
-from crtsolver.crt_components.engine import modulo, modulo_bv, candidate
+from crtsolver.crt_components.engine import modulo, modulo_bv, candidate, modulo_ff
 from crtsolver.crt_components.helpers import dto, prime_generator, utility
 from crtsolver.crt_components.errors import error
 
 class CRTSolver:
-    def __init__(self, time_limit="30000", solver_name="CRTSolver", use_bitvectors=True):
+    def __init__(self, time_limit="30000", solver_name="CRTSolver", use_bitvectors=True, use_finite_fields = False):
         # Set root directory for robust file paths
         # CRTSolver -> src -> solvers -> crt_solver.py
         # crt_solver.py = file, solvers = parents[0], crtsolver = parents[1],
@@ -21,12 +21,15 @@ class CRTSolver:
         self.TESTS = self.ROOT / "tests"
         self.RESULTS = self.ROOT / "results"
 
-        if use_bitvectors:
+        if use_finite_fields:
+            self.solver_name = solver_name + " (Finite Field Mode)"
+        elif use_bitvectors:
             self.solver_name = solver_name + " (Bit-Vector Mode)"
         else:
             self.solver_name = solver_name + " (Integer Mode)"
 
         self.use_bitvectors = use_bitvectors
+        self.use_finite_fields = use_finite_fields
         self.time_limit = time_limit
         self.writer = writer.Writer(self.RESULTS, self.solver_name)
         
@@ -83,7 +86,10 @@ class CRTSolver:
         self.writer.write()
 
     def init_mod_and_candidate(self):
-        if self.use_bitvectors:
+        if self.use_finite_fields:
+            self.modulo = modulo_ff.Modulo_FF(
+                self.ast, self.API, self.terms, self.primes, self.utility)
+        elif self.use_bitvectors:
             self.modulo = modulo_bv.Modulo_BV(
                 self.ast, self.API, self.terms, self.primes, self.bitwidth, self.utility)
         else:
@@ -117,7 +123,12 @@ class CRTSolver:
         print(f"Retrieving candidates for mod {self.primes.prime}")
         candidate_vals = [] # [result1, result2]
         var_names = list(self.terms.vars.keys()) # [constant_name1, constant_name2]
-        if self.use_bitvectors:
+        if self.use_finite_fields:
+            for name in var_names:
+                val = self.terms.ff_mod_vars[f"{name}_mod_{self.primes.prime}"]
+                ff_val = self.API.mod_solver.getValue(val).getFiniteFieldValue()
+                candidate_vals.append(int(ff_val))
+        elif self.use_bitvectors:
             for name in var_names:
                 # Get bv values from solver (represented as int)
                 val = self.terms.bv_mod_vars[f"{name}_mod_{self.primes.prime}"]
@@ -178,12 +189,22 @@ def main():
         action="store_false",
         help="Disable bit-vector mode (use integer mode instead)."
     )
+
+    parser.set_defaults(use_finite_fields=False)
+    parser.add_argument(
+        "--finite_field_mode",
+        dest="use_finite_fields",
+        action="store_true",
+        help="Use finite field mode"
+    )
+    
     args = parser.parse_args()
 
     solver = CRTSolver(
         time_limit=str(args.time_limit),
         solver_name=args.solver_name,
-        use_bitvectors=args.use_bitvectors
+        use_bitvectors=args.use_bitvectors,
+        use_finite_fields=args.use_finite_fields
     )
     solver.execute()
 

@@ -29,6 +29,12 @@ class Utility:
             ">=": Kind.BITVECTOR_UGE,
             "<=": Kind.BITVECTOR_ULE
         }
+        self.ff_operator_mapping = {
+            "=": Kind.EQUAL,
+            "+": Kind.FINITE_FIELD_ADD,
+            "*": Kind.FINITE_FIELD_MULT,
+            "-": Kind.FINITE_FIELD_ADD
+        }
 
     def create_term(self, operator, operands):
         return self.API.solver.mkTerm(self.operator_mapping[operator], *operands)
@@ -38,6 +44,9 @@ class Utility:
     
     def create_bv_mod_term(self, operator, operands):
         return self.API.mod_solver.mkTerm(self.bv_operator_mapping[operator], *operands)
+    
+    def create_ff_mod_term(self, operator, operands):
+        return self.API.mod_solver.mkTerm(self.ff_operator_mapping[operator], *operands)
         
     def handle_integer(self, num):  
         try: 
@@ -70,3 +79,22 @@ class Utility:
             num_term = self.API.tm.mkBitVector(self.bitwidth.n, int(num))
             self.terms.bv_ints[num] = num_term
             return num_term
+
+    def handle_ff_element(self , num):
+        key = f"{num}_ff_{self.primes.prime}" # return equivalent ff element for mod p
+        if key in self.terms.ff_elems: # if equivalent elemnt already exists
+            return self.terms.ff_elems[key]
+        else:
+            value = int(num) % self.primes.prime # reduce element into a valid range to represent a ff element
+            element = self.API.tm.mkFiniteFieldElem(str(value), self.primes.ff_sort)
+            self.terms.ff_elems[key] = element
+            return element
+    
+    def handle_ff_const(self, const):
+        mod_name = f"{const}_mod_{self.primes.prime}"
+        if mod_name in self.terms.ff_mod_vars:
+            return self.terms.ff_mod_vars[mod_name]
+        else:
+            new_const = self.API.tm.mkConst(self.primes.ff_sort, mod_name)
+            self.terms.ff_mod_vards[mod_name] = new_const
+            return new_const

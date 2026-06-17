@@ -32,12 +32,15 @@ class Terms:
     ints: dict = field(default_factory=dict) # cvc5 ints
     bv_mod_vars: dict = field(default_factory=dict) # var_mod_p (bv sort)
     bv_ints: dict = field(default_factory=dict) # cvc5 integers with n bitwidth
+    ff_elems: dict = field(default_factory=dict) # cvc5 ff elements
+    ff_mod_vars: dict = field(default_factory=dict) # var_mod_pp (ff sort)
 
 @dataclass
 class Primes:
     prime: int = field(default=None) # python int representation
     prime_int: cvc5.Term = field(default=None) # cvc5 int representation
     prime_bv: cvc5.Term = field(default=None) # cvc5 bv representation
+    ff_sort: cvc5.Term = field(default=None) # ff sort for current prime
 
 @dataclass
 class Bitwidth:

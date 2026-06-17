@@ -22,6 +22,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^7.1.0"
+jupyter = "^1.1.1"
 
 [project.scripts]
 crt-solver = "crtsolver.solvers.crt_solver:main"
